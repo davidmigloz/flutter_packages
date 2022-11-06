@@ -152,11 +152,30 @@ void main() {
                               builder: _mockScreenBuilder,
                               routes: <RouteBase>[
                                 GoRoute(
-                                  path: 'b',
+                                  path: 'c',
                                   builder: _mockScreenBuilder,
                                   parentNavigatorKey: shell2,
                                 ),
                               ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    GoRoute(
+                      path: 'd',
+                      builder: _mockScreenBuilder,
+                      parentNavigatorKey: root,
+                      routes: <RouteBase>[
+                        GoRoute(
+                          path: 'e',
+                          builder: _mockScreenBuilder,
+                          parentNavigatorKey: root,
+                          routes: <RouteBase>[
+                            GoRoute(
+                              path: 'f',
+                              builder: _mockScreenBuilder,
+                              parentNavigatorKey: root,
                             ),
                           ],
                         ),
