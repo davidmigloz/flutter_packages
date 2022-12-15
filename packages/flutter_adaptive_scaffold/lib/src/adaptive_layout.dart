@@ -3,7 +3,9 @@
 // found in the LICENSE file.
 
 import 'dart:ui';
+
 import 'package:flutter/widgets.dart';
+
 import 'breakpoints.dart';
 import 'slot_layout.dart';
 
@@ -362,84 +364,6 @@ class _AdaptiveLayoutDelegate extends MultiChildLayoutDelegate {
       return end;
     }
 
-    if (hasChild(_SlotIds.topNavigation.name)) {
-      final Size childSize = layoutChild(
-        _SlotIds.topNavigation.name,
-        BoxConstraints.loose(size),
-      );
-      // Trigger the animation if the new size is different from the old size.
-      updateSize(_SlotIds.topNavigation.name, childSize);
-      // Tween not the actual size, but the size that is used in the margins so
-      // the offsets can be animated.
-      final Size currentSize = Tween<Size>(
-        begin: slotSizes[_SlotIds.topNavigation.name] ?? Size.zero,
-        end: childSize,
-      ).animate(controller).value;
-      positionChild(_SlotIds.topNavigation.name, Offset.zero);
-      topMargin += currentSize.height;
-    }
-    if (hasChild(_SlotIds.bottomNavigation.name)) {
-      final Size childSize = layoutChild(
-        _SlotIds.bottomNavigation.name,
-        BoxConstraints.loose(size),
-      );
-      updateSize(_SlotIds.bottomNavigation.name, childSize);
-      final Size currentSize = Tween<Size>(
-        begin: slotSizes[_SlotIds.bottomNavigation.name] ?? Size.zero,
-        end: childSize,
-      ).animate(controller).value;
-      positionChild(
-        _SlotIds.bottomNavigation.name,
-        Offset(0, size.height - currentSize.height),
-      );
-      bottomMargin += currentSize.height;
-    }
-    if (hasChild(_SlotIds.primaryNavigation.name)) {
-      final Size childSize = layoutChild(
-        _SlotIds.primaryNavigation.name,
-        BoxConstraints.loose(size),
-      );
-      updateSize(_SlotIds.primaryNavigation.name, childSize);
-      final Size currentSize = Tween<Size>(
-        begin: slotSizes[_SlotIds.primaryNavigation.name] ?? Size.zero,
-        end: childSize,
-      ).animate(controller).value;
-      if (textDirection) {
-        positionChild(
-          _SlotIds.primaryNavigation.name,
-          Offset(leftMargin, topMargin),
-        );
-        leftMargin += currentSize.width;
-      } else {
-        positionChild(
-          _SlotIds.primaryNavigation.name,
-          Offset(size.width - currentSize.width, topMargin),
-        );
-        rightMargin += currentSize.width;
-      }
-    }
-    if (hasChild(_SlotIds.secondaryNavigation.name)) {
-      final Size childSize = layoutChild(
-        _SlotIds.secondaryNavigation.name,
-        BoxConstraints.loose(size),
-      );
-      updateSize(_SlotIds.secondaryNavigation.name, childSize);
-      final Size currentSize = Tween<Size>(
-        begin: slotSizes[_SlotIds.secondaryNavigation.name] ?? Size.zero,
-        end: childSize,
-      ).animate(controller).value;
-      if (textDirection) {
-        positionChild(
-          _SlotIds.secondaryNavigation.name,
-          Offset(size.width - currentSize.width, topMargin),
-        );
-        rightMargin += currentSize.width;
-      } else {
-        positionChild(_SlotIds.secondaryNavigation.name, Offset(0, topMargin));
-        leftMargin += currentSize.width;
-      }
-    }
-
     final double remainingWidth = size.width - rightMargin - leftMargin;
     final double remainingHeight = size.height - bottomMargin - topMargin;
     final double halfWidth = size.width / 2;
@@ -631,6 +555,84 @@ class _AdaptiveLayoutDelegate extends MultiChildLayoutDelegate {
           Size(remainingWidth, remainingHeight),
         ),
       );
+    }
+
+    if (hasChild(_SlotIds.topNavigation.name)) {
+      final Size childSize = layoutChild(
+        _SlotIds.topNavigation.name,
+        BoxConstraints.loose(size),
+      );
+      // Trigger the animation if the new size is different from the old size.
+      updateSize(_SlotIds.topNavigation.name, childSize);
+      // Tween not the actual size, but the size that is used in the margins so
+      // the offsets can be animated.
+      final Size currentSize = Tween<Size>(
+        begin: slotSizes[_SlotIds.topNavigation.name] ?? Size.zero,
+        end: childSize,
+      ).animate(controller).value;
+      positionChild(_SlotIds.topNavigation.name, Offset.zero);
+      topMargin += currentSize.height;
+    }
+    if (hasChild(_SlotIds.bottomNavigation.name)) {
+      final Size childSize = layoutChild(
+        _SlotIds.bottomNavigation.name,
+        BoxConstraints.loose(size),
+      );
+      updateSize(_SlotIds.bottomNavigation.name, childSize);
+      final Size currentSize = Tween<Size>(
+        begin: slotSizes[_SlotIds.bottomNavigation.name] ?? Size.zero,
+        end: childSize,
+      ).animate(controller).value;
+      positionChild(
+        _SlotIds.bottomNavigation.name,
+        Offset(0, size.height - currentSize.height),
+      );
+      bottomMargin += currentSize.height;
+    }
+    if (hasChild(_SlotIds.primaryNavigation.name)) {
+      final Size childSize = layoutChild(
+        _SlotIds.primaryNavigation.name,
+        BoxConstraints.loose(size),
+      );
+      updateSize(_SlotIds.primaryNavigation.name, childSize);
+      final Size currentSize = Tween<Size>(
+        begin: slotSizes[_SlotIds.primaryNavigation.name] ?? Size.zero,
+        end: childSize,
+      ).animate(controller).value;
+      if (textDirection) {
+        positionChild(
+          _SlotIds.primaryNavigation.name,
+          Offset(leftMargin, topMargin),
+        );
+        leftMargin += currentSize.width;
+      } else {
+        positionChild(
+          _SlotIds.primaryNavigation.name,
+          Offset(size.width - currentSize.width, topMargin),
+        );
+        rightMargin += currentSize.width;
+      }
+    }
+    if (hasChild(_SlotIds.secondaryNavigation.name)) {
+      final Size childSize = layoutChild(
+        _SlotIds.secondaryNavigation.name,
+        BoxConstraints.loose(size),
+      );
+      updateSize(_SlotIds.secondaryNavigation.name, childSize);
+      final Size currentSize = Tween<Size>(
+        begin: slotSizes[_SlotIds.secondaryNavigation.name] ?? Size.zero,
+        end: childSize,
+      ).animate(controller).value;
+      if (textDirection) {
+        positionChild(
+          _SlotIds.secondaryNavigation.name,
+          Offset(size.width - currentSize.width, topMargin),
+        );
+        rightMargin += currentSize.width;
+      } else {
+        positionChild(_SlotIds.secondaryNavigation.name, Offset(0, topMargin));
+        leftMargin += currentSize.width;
+      }
     }
   }
 
