@@ -235,6 +235,8 @@ void main() {
       expect(match1 == match2, isFalse);
       expect(match1.hashCode == match2.hashCode, isFalse);
 
+      // The completer is excluded from identity (it cannot survive codec
+      // round-trips), so matches differing only in completer are equal.
       match1 = ImperativeRouteMatch(
         pageKey: key1,
         matches: matchList1,
@@ -245,8 +247,8 @@ void main() {
         matches: matchList1,
         completer: completer2,
       );
-      expect(match1 == match2, isFalse);
-      expect(match1.hashCode == match2.hashCode, isFalse);
+      expect(match1 == match2, isTrue);
+      expect(match1.hashCode == match2.hashCode, isTrue);
     });
   });
 }

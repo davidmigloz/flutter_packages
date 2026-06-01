@@ -497,16 +497,19 @@ class ImperativeRouteMatch extends RouteMatch {
     return super.buildState(configuration, this.matches);
   }
 
+  // The completer is an ephemeral result channel for push(...).then(...); it
+  // cannot survive codec round-trips (restore/refresh decode a fresh one), so it
+  // is excluded from identity — otherwise a re-decoded match list is spuriously
+  // != its live original and fires onExit on a route that never left the stack.
   @override
   bool operator ==(Object other) {
     return other is ImperativeRouteMatch &&
-        completer == other.completer &&
         matches == other.matches &&
         super == other;
   }
 
   @override
-  int get hashCode => Object.hash(super.hashCode, completer, matches.hashCode);
+  int get hashCode => Object.hash(super.hashCode, matches.hashCode);
 }
 
 /// The list of [RouteMatchBase] objects.
