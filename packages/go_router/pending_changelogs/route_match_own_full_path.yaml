@@ -1,0 +1,3 @@
+changelog: |
+  - Fixes GoRouterState.fullPath for a parent route (its page, route-level redirect and onExit) to be that route's own full path instead of the deepest matched route's.
+version: patch

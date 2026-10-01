@@ -324,4 +324,294 @@ void main() {
       expect(find.text('B'), findsOneWidget);
     });
   });
+
+  group('GoRouterState.fullPath', () {
+    final states = <String, GoRouterState>{};
+
+    setUp(states.clear);
+
+    // Names the page like apps commonly do, so observers can read it back.
+    GoRouterPageBuilder capturePage(String label) {
+      return (BuildContext context, GoRouterState state) {
+        states[label] = state;
+        return MaterialPage<void>(
+          key: state.pageKey,
+          name: state.name ?? state.fullPath,
+          child: Text(label),
+        );
+      };
+    }
+
+    List<RouteBase> familyRoutes() => <RouteBase>[
+      GoRoute(
+        path: '/family/:fid',
+        pageBuilder: capturePage('family'),
+        routes: <RouteBase>[GoRoute(path: 'person/:pid', pageBuilder: capturePage('person'))],
+      ),
+    ];
+
+    testWidgets('a parent route keeps its own full path when a child is opened with go', (
+      WidgetTester tester,
+    ) async {
+      final GoRouter router = await createRouter(
+        familyRoutes(),
+        tester,
+        initialLocation: '/family/f2',
+      );
+      expect(states['family']!.fullPath, '/family/:fid');
+
+      router.go('/family/f2/person/p1');
+      await tester.pumpAndSettle();
+
+      expect(states['family']!.fullPath, '/family/:fid');
+      expect(states['family']!.matchedLocation, '/family/f2');
+      expect(states['person']!.fullPath, '/family/:fid/person/:pid');
+      expect(states['person']!.matchedLocation, '/family/f2/person/p1');
+      expect(router.state.fullPath, '/family/:fid/person/:pid');
+    });
+
+    testWidgets('a parent route under a ShellRoute keeps its own full path', (
+      WidgetTester tester,
+    ) async {
+      final routes = <RouteBase>[
+        ShellRoute(
+          pageBuilder: (BuildContext context, GoRouterState state, Widget child) {
+            states['shell'] = state;
+            return MaterialPage<void>(key: state.pageKey, child: child);
+          },
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/a',
+              pageBuilder: capturePage('a'),
+              routes: <RouteBase>[GoRoute(path: 'b/:id', pageBuilder: capturePage('b'))],
+            ),
+          ],
+        ),
+      ];
+      final GoRouter router = await createRouter(routes, tester, initialLocation: '/a');
+
+      router.go('/a/b/1');
+      await tester.pumpAndSettle();
+
+      expect(states['a']!.fullPath, '/a');
+      expect(states['b']!.fullPath, '/a/b/:id');
+      // A shell wraps its current child, so it keeps carrying the child's path.
+      expect(states['shell']!.fullPath, '/a/b/:id');
+      expect(router.state.fullPath, '/a/b/:id');
+    });
+
+    testWidgets('a pushed page and the page beneath it keep their own full path', (
+      WidgetTester tester,
+    ) async {
+      final GoRouter router = await createRouter(
+        familyRoutes(),
+        tester,
+        initialLocation: '/family/f2',
+      );
+
+      router.push('/family/f2/person/p1');
+      await tester.pumpAndSettle();
+
+      expect(states['family']!.fullPath, '/family/:fid');
+      expect(states['person']!.fullPath, '/family/:fid/person/:pid');
+      expect(router.state.fullPath, '/family/:fid/person/:pid');
+    });
+
+    testWidgets('a page named after its fullPath identifies the parent revealed by a pop', (
+      WidgetTester tester,
+    ) async {
+      final observer = _PopObserver();
+      final GoRouter router = await createRouter(
+        familyRoutes(),
+        tester,
+        initialLocation: '/family/f2',
+        observers: <NavigatorObserver>[observer],
+      );
+
+      router.go('/family/f2/person/p1');
+      await tester.pumpAndSettle();
+      router.pop();
+      await tester.pumpAndSettle();
+
+      expect(observer.revealedNames, <String?>['/family/:fid']);
+    });
+
+    testWidgets('top-level onEnter keeps receiving the whole matched path', (
+      WidgetTester tester,
+    ) async {
+      final onEnterPaths = <(String?, String?)>[];
+      final router = GoRouter(
+        onEnter:
+            (BuildContext context, GoRouterState current, GoRouterState next, GoRouter goRouter) {
+              onEnterPaths.add((current.fullPath, next.fullPath));
+              return const Allow();
+            },
+        routes: <RouteBase>[
+          GoRoute(path: '/', builder: dummy),
+          ...familyRoutes(),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+      onEnterPaths.clear();
+
+      router.go('/family/f2/person/p1');
+      await tester.pumpAndSettle();
+      router.go('/family/f2');
+      await tester.pumpAndSettle();
+
+      expect(onEnterPaths, <(String?, String?)>[
+        ('/', '/family/:fid/person/:pid'),
+        ('/family/:fid/person/:pid', '/family/:fid'),
+      ]);
+    });
+
+    testWidgets('a child outside its ShellRoute navigator keeps the path through the shell', (
+      WidgetTester tester,
+    ) async {
+      final rootNavigatorKey = GlobalKey<NavigatorState>();
+      final routes = <RouteBase>[
+        ShellRoute(
+          builder: (BuildContext context, GoRouterState state, Widget child) => child,
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/a',
+              pageBuilder: capturePage('a'),
+              routes: <RouteBase>[
+                GoRoute(
+                  path: 'b/:id',
+                  parentNavigatorKey: rootNavigatorKey,
+                  pageBuilder: capturePage('b'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ];
+      final GoRouter router = await createRouter(
+        routes,
+        tester,
+        initialLocation: '/a',
+        navigatorKey: rootNavigatorKey,
+      );
+
+      router.go('/a/b/1');
+      await tester.pumpAndSettle();
+
+      expect(states['a']!.fullPath, '/a');
+      expect(states['b']!.fullPath, '/a/b/:id');
+      expect(router.state.fullPath, '/a/b/:id');
+    });
+
+    testWidgets('a route inside a ShellRoute below a parent route keeps the path above the shell', (
+      WidgetTester tester,
+    ) async {
+      final routes = <RouteBase>[
+        GoRoute(
+          path: '/x',
+          pageBuilder: capturePage('x'),
+          routes: <RouteBase>[
+            ShellRoute(
+              builder: (BuildContext context, GoRouterState state, Widget child) => child,
+              routes: <RouteBase>[
+                GoRoute(
+                  path: 'a',
+                  pageBuilder: capturePage('a'),
+                  routes: <RouteBase>[GoRoute(path: 'b/:id', pageBuilder: capturePage('b'))],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ];
+      final GoRouter router = await createRouter(routes, tester, initialLocation: '/x/a');
+
+      router.go('/x/a/b/1');
+      await tester.pumpAndSettle();
+
+      expect(states['x']!.fullPath, '/x');
+      expect(states['a']!.fullPath, '/x/a');
+      expect(states['b']!.fullPath, '/x/a/b/:id');
+    });
+
+    testWidgets('the route-level redirect of a parent route gets its own full path', (
+      WidgetTester tester,
+    ) async {
+      final redirectStates = <String, GoRouterState>{};
+      final routes = <RouteBase>[
+        GoRoute(
+          path: '/family/:fid',
+          builder: dummy,
+          redirect: (BuildContext context, GoRouterState state) {
+            redirectStates['family'] = state;
+            return null;
+          },
+          routes: <RouteBase>[
+            GoRoute(
+              path: 'person/:pid',
+              builder: dummy,
+              redirect: (BuildContext context, GoRouterState state) {
+                redirectStates['person'] = state;
+                return null;
+              },
+            ),
+          ],
+        ),
+      ];
+
+      await createRouter(routes, tester, initialLocation: '/family/f2/person/p1');
+
+      expect(redirectStates['family']!.fullPath, '/family/:fid');
+      expect(redirectStates['family']!.matchedLocation, '/family/f2');
+      expect(redirectStates['person']!.fullPath, '/family/:fid/person/:pid');
+    });
+
+    testWidgets('the onExit of a parent route gets its own full path', (WidgetTester tester) async {
+      final exitStates = <String, GoRouterState>{};
+      final routes = <RouteBase>[
+        GoRoute(path: '/', builder: dummy),
+        GoRoute(
+          path: '/family/:fid',
+          builder: dummy,
+          onExit: (BuildContext context, GoRouterState state) {
+            exitStates['family'] = state;
+            return true;
+          },
+          routes: <RouteBase>[
+            GoRoute(
+              path: 'person/:pid',
+              builder: dummy,
+              onExit: (BuildContext context, GoRouterState state) {
+                exitStates['person'] = state;
+                return true;
+              },
+            ),
+          ],
+        ),
+      ];
+      final GoRouter router = await createRouter(
+        routes,
+        tester,
+        initialLocation: '/family/f2/person/p1',
+      );
+
+      router.go('/');
+      await tester.pumpAndSettle();
+
+      expect(exitStates['family']!.fullPath, '/family/:fid');
+      expect(exitStates['family']!.matchedLocation, '/family/f2');
+      expect(exitStates['person']!.fullPath, '/family/:fid/person/:pid');
+    });
+  });
+}
+
+/// Records the name of the route revealed by each pop.
+class _PopObserver extends NavigatorObserver {
+  final List<String?> revealedNames = <String?>[];
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    revealedNames.add(previousRoute?.settings.name);
+  }
 }

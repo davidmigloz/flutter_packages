@@ -315,7 +315,8 @@ class RouteMatch extends RouteMatchBase {
       configuration,
       uri: matches.uri,
       matchedLocation: matchedLocation,
-      fullPath: matches.fullPath,
+      // Not in the list for an ImperativeRouteMatch, whose own list ends with its route.
+      fullPath: RouteMatchList._generateFullPathOfMatch(this, matches.matches) ?? matches.fullPath,
       pathParameters: matches.pathParameters,
       pageKey: pageKey,
       name: route.name,
@@ -563,6 +564,43 @@ class RouteMatchList with Diagnosticable {
       fullPath = concatenatePaths(fullPath, pathSegment);
     }
     return fullPath;
+  }
+
+  /// Generates the full path of `target`: the paths of the matches that lead to
+  /// it, up to and including its own.
+  ///
+  /// Returns null if `target` is not in `matches`. Like [_generateFullPath],
+  /// this method ignores [ImperativeRouteMatch]s.
+  static String? _generateFullPathOfMatch(
+    RouteMatch target,
+    Iterable<RouteMatchBase> matches, {
+    String parentPath = '',
+  }) {
+    var fullPath = parentPath;
+    for (final RouteMatchBase match in matches.where(
+      (RouteMatchBase match) => match is! ImperativeRouteMatch,
+    )) {
+      if (match is RouteMatch) {
+        fullPath = concatenatePaths(fullPath, match.route.path);
+        if (match == target) {
+          return fullPath;
+        }
+      } else if (match is ShellRouteMatch) {
+        final String? pathInShell = _generateFullPathOfMatch(
+          target,
+          match.matches,
+          parentPath: fullPath,
+        );
+        if (pathInShell != null) {
+          return pathInShell;
+        }
+        // A route that uses another navigator key follows the shell match.
+        fullPath = concatenatePaths(fullPath, _generateFullPath(match.matches));
+      } else {
+        assert(false, 'Unexpected match type: $match');
+      }
+    }
+    return null;
   }
 
   /// Returns true if there are no matches.

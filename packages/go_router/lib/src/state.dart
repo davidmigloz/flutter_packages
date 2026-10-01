@@ -55,6 +55,8 @@ class GoRouterState {
 
   /// The full path to this sub-route, e.g. /family/:fid
   ///
+  /// A parent route's state has its own path, not the deepest matched route's.
+  ///
   /// For top level redirect, this is the entire path that matches the location.
   /// It can be empty if go router can't find a match. In that case, the [error]
   /// contains more information.
